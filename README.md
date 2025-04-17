@@ -1,1 +1,1 @@
-# reddit-bot
+# discord-bot
