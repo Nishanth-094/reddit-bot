@@ -4,12 +4,56 @@ from dotenv import load_dotenv
 import os
 import random
 
-from wordle_game import get_random_word, get_feedback
-
-active_games = {} 
-
 # Load environment variables from the .env file
 load_dotenv()
+
+choices = {
+    "✊": "rock",
+    "✋": "paper",
+    "✌️": "scissors"
+}
+
+class RPSView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=15)  # auto timeout after 15 seconds
+
+    @discord.ui.button(label="Rock", style=discord.ButtonStyle.primary, emoji="✊")
+    async def rock(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.play(interaction, "rock")
+
+    @discord.ui.button(label="Paper", style=discord.ButtonStyle.success, emoji="✋")
+    async def paper(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.play(interaction, "paper")
+
+    @discord.ui.button(label="Scissors", style=discord.ButtonStyle.danger, emoji="✌️")
+    async def scissors(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await self.play(interaction, "scissors")
+
+    async def play(self, interaction, player_choice):
+        bot_choice = random.choice(list(choices.values()))
+        
+        if player_choice == bot_choice:
+            result = "It's a tie!"
+        elif (
+            (player_choice == "rock" and bot_choice == "scissors") or
+            (player_choice == "paper" and bot_choice == "rock") or
+            (player_choice == "scissors" and bot_choice == "paper")
+        ):
+            result = "You win!"
+        else:
+            result = "I win!"
+
+        for child in self.children:
+            child.disabled = True
+
+        await interaction.response.edit_message(
+            content=f"You chose **{player_choice}** {self.get_emoji(player_choice)}\n"
+                    f"I chose **{bot_choice}** {self.get_emoji(bot_choice)}\n\n**{result}**",
+            view=self
+        )
+
+    def get_emoji(self, choice):
+        return next(emoji for emoji, name in choices.items() if name == choice)
 
 # Get the bot token from the .env file
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -49,52 +93,16 @@ async def npcstatus(ctx):
     status = npc["status"]
     await ctx.send(f"{npc['name']} says: {status}")
 
+@bot.command(name ='rps')
+async def rps(ctx):
+    view = RPSView()
+    await ctx.send("Let's play Rock Paper Scissors! Choose your move:", view=view)
+
+
 # Event when the bot successfully connects
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}!")
-
-
-@bot.command(name="wordle")
-async def wordle(ctx):
-    user_id = ctx.author.id
-    if user_id in active_games:
-        await ctx.send("You're already playing Wordle! Use `!guess yourword` to keep guessing.")
-        return
-
-    word = get_random_word()
-    active_games[user_id] = {"word": word, "attempts": []}
-    await ctx.send("🧠 Wordle started! Use `!guess yourword` to make a guess.")
-
-
-@bot.command(name="guess")
-async def guess(ctx, guess: str):
-    user_id = ctx.author.id
-    guess = guess.lower()
-
-    if user_id not in active_games:
-        await ctx.send("Start a game first using `!wordle`.")
-        return
-
-    if len(guess) != 5 or guess not in WORDS:  # You can replace this check with a full dictionary
-        await ctx.send("Invalid guess. Make sure it's a valid 5-letter word.")
-        return
-
-    game = active_games[user_id]
-    feedback = get_feedback(game["word"], guess)
-    game["attempts"].append((guess, feedback))
-
-    board = "\n".join(f"{g.upper()} {f}" for g, f in game["attempts"])
-    await ctx.send(f"```\n{board}\n```")
-
-    if guess == game["word"]:
-        await ctx.send(f"🎉 Correct! You guessed the word in {len(game['attempts'])} tries.")
-        del active_games[user_id]
-    elif len(game["attempts"]) >= 6:
-        await ctx.send(f"❌ Out of tries! The word was **{game['word'].upper()}**.")
-        del active_games[user_id]
-
-
 
 # Run the bot using the token
 bot.run(TOKEN)
