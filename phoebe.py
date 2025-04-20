@@ -24,7 +24,7 @@ class PhoebeCog(commands.Cog):
             SharedData.user_points[user_id] = 0
             
         # Check if the image file exists
-        image_path = "/Users/brindap/Documents/git/discord-bot_1/images/smelly_cat.jpeg"
+        image_path = "/Users/brindap/Documents/git/friends_bot/images/smelly_cat.jpeg"
         if not os.path.exists(image_path):
             await ctx.send("Oops! Phoebe can't find her picture! (Image file not found)")
             SharedData.phoebe_games[user_id]['active'] = False
